@@ -1,3 +1,3 @@
-## 1.0.0
+## 0.0.1
 
-- Initial version, created by Stagehand
+- First commit, functionality to calculate tiles with address for a circle on a map
