@@ -1,6 +1,3 @@
-/// Support for doing something awesome.
-///
-/// More dartdocs go here.
 library tilecache_calc;
 
 export 'src/tilecache_calc_base.dart';
