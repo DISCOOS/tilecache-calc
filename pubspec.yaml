@@ -1,6 +1,6 @@
 name: tilecache_calc
 description: Library for tile cache calculations
-version: 0.0.1
+version: 0.0.2
 author: Anders Scisly Sagevik <anders@discoos.org>
 homepage: https://github.com/DISCOOS/tilecache-calc
 
@@ -9,7 +9,10 @@ environment:
 
 dependencies:
   latlong2: ^0.8.0
+  dart_jts: ^0.1.0
+  proj4dart: any
+  utm: ^0.1.3-nullsafety.1
 
 dev_dependencies:
-  pedantic: ^1.9.0
+  lints: 1.0.1
   test: ^1.14.4
