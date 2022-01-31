@@ -52,7 +52,7 @@ class TileEstimateResult {
 class TileCalc {
   static TileEstimateResult estimateTileCount(
     LatLng centerPoint, {
-    @required Map<int, double> radiuses,
+    required Map<int, double> radiuses,
   }) {
     // Verify input - centerPoint.
     _pointIsWithinWebMercator(centerPoint);
@@ -98,7 +98,7 @@ class TileCalc {
   ///   to the smallest Zoom level in the input that covers the circle.
   static TileResult listTilesWithinRadius(
     LatLng centerPoint, {
-    @required Map<int, double> radiuses,
+    required Map<int, double> radiuses,
   }) {
     // Verify input - centerPoint
     _pointIsWithinWebMercator(centerPoint);
@@ -140,7 +140,7 @@ class TileCalc {
   /// The function does currently not support buffers that spans over equator, the date line or far outside it's UTM
   /// zone.
   static TileResult listTilesForPointGeometry(List<LatLng> _vertices, int _minZoom, int _maxZoom,
-      {LatLng sortFromPoint, Map<int, double> buffers = const {}}) {
+      {LatLng? sortFromPoint, Map<int, double> buffers = const {}}) {
     final _tilesForGeometry = TilesForGeometry();
     return _tilesForGeometry.listTilesForGeometry('POINT', _vertices, _minZoom, _maxZoom,
         sortFromPoint: sortFromPoint, buffers: buffers);
@@ -158,7 +158,7 @@ class TileCalc {
   /// The function does currently not support linestring or buffers that spans over equator, the date line or far outside it's UTM
   /// zone.
   static TileResult listTilesForLinestringGeometry(List<LatLng> _vertices, int _minZoom, int _maxZoom,
-      {LatLng sortFromPoint, Map<int, double> buffers = const {}}) {
+      {LatLng? sortFromPoint, Map<int, double> buffers = const {}}) {
     final _tilesForGeometry = TilesForGeometry();
     return _tilesForGeometry.listTilesForGeometry('LINESTRING', _vertices, _minZoom, _maxZoom,
         sortFromPoint: sortFromPoint, buffers: buffers);
@@ -176,7 +176,7 @@ class TileCalc {
   /// The function does currently not support polygon or buffers that spans over equator, the date line or far outside it's UTM
   /// zone.
   static TileResult listTilesForPolygonGeometry(List<LatLng> _vertices, int _minZoom, int _maxZoom,
-      {LatLng sortFromPoint, Map<int, double> buffers = const {}}) {
+      {LatLng? sortFromPoint, Map<int, double> buffers = const {}}) {
     final _tilesForGeometry = TilesForGeometry();
     return _tilesForGeometry.listTilesForGeometry('POLYGON', _vertices, _minZoom, _maxZoom,
         sortFromPoint: sortFromPoint, buffers: buffers);
@@ -240,7 +240,7 @@ class Tile implements Comparable<Tile> {
 
   jts.Geometry toWorldCoordinateGeometry() {
     final rdr = jts.WKTReader();
-    return rdr.read(toWorldCoordinateWKT());
+    return rdr.read(toWorldCoordinateWKT())!;
   }
 
   bool tileIsWithinPolygon(jts.Geometry _polygon) {
@@ -323,7 +323,7 @@ class TilesForZoomLevel {
       sortingMap[tile] = pow((tile.tileY - centerTile.tileY), 2) + pow((tile.tileX - centerTile.tileX), 2) as int;
     }
     var sortedResult = sortingMap.keys.toList(growable: false)
-      ..sort((k1, k2) => sortingMap[k1].compareTo(sortingMap[k2]));
+      ..sort((k1, k2) => sortingMap[k1]!.compareTo(sortingMap[k2]!));
 
     return sortedResult;
   }
@@ -431,7 +431,7 @@ class TilesForGeometry {
   final Map<int, jts.Geometry> _geometriesMap = {};
 
   TileResult listTilesForGeometry(String _geometryType, List<LatLng> _polygon, int _minZoom, int _maxZoom,
-      {LatLng sortFromPoint, Map<int, double> buffers = const {}}) {
+      {LatLng? sortFromPoint, Map<int, double> buffers = const {}}) {
     // Sort buffers by size, starting with the widest buffer.
     var _sortedBuffers = _sortRadiusBuffers(buffers);
 
@@ -469,9 +469,9 @@ class TilesForGeometry {
   void _tileFinder(Tile _tile, int _startZoom, int _stopZoom) {
     final _tileGeometry = _tile.toWorldCoordinateGeometry();
     if (_tile.zoom <= _stopZoom) {
-      if (_geometriesMap[max(_tile.zoom, _startZoom)].contains(_tileGeometry)) {
+      if (_geometriesMap[max(_tile.zoom, _startZoom)]!.contains(_tileGeometry)) {
         _addContainedTiles(_tile, _startZoom, _stopZoom);
-      } else if (_geometriesMap[max(_tile.zoom, _startZoom)].intersects(_tileGeometry)) {
+      } else if (_geometriesMap[max(_tile.zoom, _startZoom)]!.intersects(_tileGeometry)) {
         if (_tile.zoom >= _startZoom) _resultingTiles.add(_tile);
         _tileFinder(Tile(_tile.tileX * 2, _tile.tileY * 2, _tile.zoom + 1), _startZoom, _stopZoom);
         _tileFinder(Tile(_tile.tileX * 2, _tile.tileY * 2 + 1, _tile.zoom + 1), _startZoom, _stopZoom);
@@ -536,7 +536,7 @@ class TilesForGeometry {
             northing: element.y,
             zoneNumber: _UTMCenter.zoneNumber,
             zoneLetter: _UTMCenter.zoneLetter);
-        _result[bufferValue].add(LatLng(p.lat, p.lon));
+        _result[bufferValue]!.add(LatLng(p.lat, p.lon));
       });
     }
     return _result;
@@ -557,6 +557,9 @@ class TilesForGeometry {
       case 'POLYGON':
         _geometry = _geometryFactory.createPolygonFromCoords(listCoordinates);
         break;
+      default:
+        _geometry = _geometryFactory.createPoint(listCoordinates.single);
+          throw ArgumentError.value(_geometryType, '_geometryType', 'An unknown Geometry type has been used.');
     }
     return _geometry;
   }
@@ -571,7 +574,7 @@ class TilesForGeometry {
       // Iterate through the relevant zoom and add corresponding buffer.
       while (_currentZoom <= _sortedBuffers[i].key) {
         _geometriesMap[_currentZoom] =
-            jts.WKTReader().read(_latLngList2WKTGeometry('POLYGON', _bufferList[_sortedBuffers[i].value]));
+            jts.WKTReader().read(_latLngList2WKTGeometry('POLYGON', _bufferList[_sortedBuffers[i].value]!))!;
         _currentZoom++;
       }
     }
@@ -581,7 +584,7 @@ class TilesForGeometry {
     if (_geometriesMap.isEmpty || _currentZoom < _maxZoom) {
       _currentZoom++;
       while (_currentZoom <= _maxZoom) {
-        _geometriesMap[_currentZoom] = jts.WKTReader().read(_latLngList2WKTGeometry(_geometryType, _geometry));
+        _geometriesMap[_currentZoom] = jts.WKTReader().read(_latLngList2WKTGeometry(_geometryType, _geometry))!;
         _currentZoom++;
       }
       _currentZoom--;
@@ -612,7 +615,7 @@ class TilesForGeometry {
   /// Sort the results.
   ///
   /// The tiles are first sorted by Zoom level, then by distance to center (or a given point).
-  Map<int, List<Tile>> _sortResult(int _minZoom, int highestZoom, {LatLng sortFromPoint}) {
+  Map<int, List<Tile>> _sortResult(int _minZoom, int highestZoom, {LatLng? sortFromPoint}) {
     // Create a map where we store the tiles in a list per Zoom level. Initialize each Zoom level to an empty list.
     final _sortedByZoomLevel = <int, List<Tile>>{}; // Where we store the tiles when sorted by Zoom level.
     for (var i = _minZoom; i <= highestZoom; i++) {
@@ -621,15 +624,15 @@ class TilesForGeometry {
 
     // Add each tile to the correct list in the result map.
     for (final _tile in _resultingTiles) {
-      _sortedByZoomLevel[_tile.zoom].add(_tile);
+      _sortedByZoomLevel[_tile.zoom]!.add(_tile);
     }
 
     // Sort each Zoom level from distance to sortFromPoint or center.
-    Point p;
+    Point <double> p;
     if (sortFromPoint == null) {
       // If sortFromPoint is null, use center from Geometry.
-      final centerPoint = _geometriesMap[highestZoom].getCentroid();
-      p = Point(centerPoint.coordinates.getX(0), centerPoint.coordinates.getY(0));
+      final centerPoint = _geometriesMap[highestZoom]!.getCentroid();
+      p = Point(centerPoint.coordinates!.getX(0), centerPoint.coordinates!.getY(0));
     } else {
       // If sortFromPoint is given, convert it from LatLng.
       p = _convertLatLng2WorldCoordinate(sortFromPoint);
@@ -646,12 +649,12 @@ class TilesForGeometry {
       sortingMap.clear();
 
       // Iterate through all tiles for the Zoom level, and calculate distance the tile of the sort point.
-      for (var tile in _sortedByZoomLevel[i]) {
+      for (var tile in _sortedByZoomLevel[i]!) {
         sortingMap[tile] = pow((tile.tileX - sortFromTile.tileX), 2) + pow((tile.tileY - sortFromTile.tileY), 2) as int;
       }
       // Sort the tiles by distance.
       sortedResult[i] = sortingMap.keys.toList(growable: false)
-        ..sort((k1, k2) => sortingMap[k1].compareTo(sortingMap[k2]));
+        ..sort((k1, k2) => sortingMap[k1]!.compareTo(sortingMap[k2]!));
     }
     return sortedResult;
   }
